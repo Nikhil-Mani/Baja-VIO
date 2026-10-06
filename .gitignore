@@ -1,0 +1,8 @@
+textbook.pdf
+*.aux
+*.fls
+*.log
+*.synctex
+*.toc
+.*/
+__pycache__/
