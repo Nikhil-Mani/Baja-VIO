@@ -239,11 +239,8 @@ These complications lead to the following definitions:
     \widehat{\delta x}_{n+1, n} &= (I + \frac{\partial f_{error}}{\partial \delta x} \Delta t) \widehat{\delta x}_{n,n}
 \end{align} 
 
-The second line represents the derivative of a seperate $f$ representing the nonlinear dynamics of the error state. Although these nonlinear dynamics can be hand-differentiated, we will use Python's autodiff as it will remain more accurate especially for later parts of the system and maintains flexibility in case we ever go down a learning-based path. 
+The second line represents the derivative of a seperate $f$ representing the nonlinear dynamics of the error state. Although these nonlinear dynamics can be hand-differentiated, we will use Python's autodiff as it will remain more accurate especially for later parts of the system and maintains flexibility in case we ever go down a learning-based path. Here is the explicit version of our F matrix for reference:
 
-\begin{align*}
-    
-\end{align*}
 Our F is defined like this:
 \[
 \begin{bmatrix}
@@ -254,7 +251,7 @@ Our F is defined like this:
     &\dots &0& \dots \\
 \end{bmatrix}
 \]
-\section{H}
+\subsection{H}
 We formalize the concept of "conditioning our state on our observations" with the concept of Kalman gain, denoted as $K_n$. This quantity represents how much we trust new measurements, and how much we'll factor them into our updated state. Kalman gain for a linear Kalman filter is defined as:
 \[
 K_n = P_{n,n-1}H^T \cdot (H P_{n,n-1}H^T + R_n)^{-1}
@@ -283,10 +280,18 @@ $R$  & Sensor noise matrix \\
 \end{table}
 In scalar form, a Kalman gain of $1$ correlates to fully trusting your measurement, and $0$ vice versa. Let's look at the end behavior to get some intuition:
 
-As $P \gg R$, $K \lim\to 1$. This physically means that your uncertainty on your state is extremely high, and so then regardless of how much noise our sensors have we trust the measurement 100\%. This is commonly used near the beginning of the estimation process when we initialize a guess of the system.
-As $R \gg P$, $K \lim \to 0$. This correlates with extremely high sensor noise, meaning we take our previous prediction with no weight on the new measurement.
+If $P \gg R$, $K \lim\to 1$. This physically means that your uncertainty on your state is extremely high, and so then regardless of how much noise our sensors have we trust the measurement 100\%. This is commonly used near the beginning of the estimation process when we initialize a guess of the system.
+
+If $R \gg P$, $K \lim \to 0$. This correlates with extremely high sensor noise, meaning we take our previous prediction with no weight on the new measurement.
 The more complex form does a similar process with some intermediary steps like projecting the covariance matrix into the measurement space, but the general idea remains the same. 
 
 The H matrix is much more granular than the F matrix, and operates directly on component vectors.
 
+\subsection{Q and R}
+These matrices represent the noise for different parts of our system.
+\begin{itemize}
+    \item Q represents the noise of the measurements (process noise)
+    \item R represents the noise of the sensors 
+\end{itemize}
+I have not yet decided on the contents of either matrix. The R matrix is a lot easier to derive (we just measure noise), but the Q matrix is pretty tricky to figure out. Right now, I just have it set as a diagonal matrix with just one input affecting the state tying in. For example, position is set to 0 since nothing directly measures it, velocity has an acceleration term, etc. This requires some more work on my part to understand. 
 \end{document}
