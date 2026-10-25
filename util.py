@@ -37,15 +37,18 @@ def quat_to_R(q):
     return (w * w - v @ v) * jnp.eye(3) + 2 * jnp.outer(v, v) + 2 * w * skew(v)
 
 def ackermann_percent(p, delta):
+    """Evaluate the fitted Ackermann percentage at a steering angle in degrees."""
     # Desmos fitting yielded this curve with R^2 of .99
     return (p["a"] * delta**3 + p["b"] * delta**2 + p["c"] * delta
             + p["d"] + p["h"] * jnp.exp(p["l"] * delta))
 
 def ackermann_angles(params, delta):
+    """Return outer and inner wheel angles in radians for delta in radians."""
     # standard formula is arctan(L / (L/tan(d) +- T/2))
     # doesnt work for delta = 0, so rewrite with tan in numerator
     tan = jnp.tan(delta)
-    s = ackermann_percent(params.ack_per, delta)
+    # The fit uses degrees and returns percent; geometry uses radians.
+    s = ackermann_percent(params.ack_per, jnp.rad2deg(delta)) / 100.0
     delta_out = s * jnp.arctan(params.L * tan / (params.L + 0.5 * params.T * tan))
     delta_in = s * jnp.arctan(params.L * tan / (params.L - 0.5 * params.T * tan))
     return delta_out, delta_in
