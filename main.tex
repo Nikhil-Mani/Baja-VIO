@@ -12,7 +12,7 @@
 \tableofcontents
 \section{Introduction}
 
-This project is going to attempt to apply a Kalman filter-based approach to perform state estimation on the Blue Jay Racing 23xt. The end goal is for us to be able to produce 3D simulated replay of each race with accurate measurements of the position, velocity, and other dynamics at each point in time. 
+This project is going to attempt to apply a Kalman filter-based approach to perform state estimation on the Blue Jay Racing 23xt. The end goal is for us to be able to produce 3D simulated replay of each race with accurate measurements of the position, velocity, and other dynamics at each point in time.
 
 \section{What is a Kalman Filter?}
 
@@ -180,17 +180,17 @@ Our input vector is specified as below:
     \item \textbf{Acceleration}: Acceleration as measured by the IMU
     \[
     \bm{a} = \begin{bmatrix}
-        \ddot{x} \\ \ddot{y}\\ \ddot{z} 
+        \ddot{x} \\ \ddot{y}\\ \ddot{z}
     \end{bmatrix}
     \]
-    \item \textbf{Angular velocity:} Measured by the gyroscope in the IMU 
+    \item \textbf{Angular velocity:} Measured by the gyroscope in the IMU
     \[
    \bm{\omega} = \begin{bmatrix}
     \omega_x \\ \omega_y \\ \omega_z
    \end{bmatrix}
     \]
 \end{itemize}
-So in total, 
+So in total,
 \[
 u = \begin{bmatrix}
     \bm{a} \\ \bm{\omega}
@@ -205,17 +205,17 @@ Finally, we have our measurements; the values we check our proposed state agains
     \[
    \bm{\delta} = \begin{bmatrix}
     \delta_{\text{in}} \\ \delta_{\text{out}}
-   \end{bmatrix} 
+   \end{bmatrix}
     \]
-    \item \textbf{Wheel Encoders:} Measure the rotations per minute of each wheel: 
+    \item \textbf{Wheel Encoders:} Measure the rotations per minute of each wheel:
     \[
         \bm{n} = \begin{bmatrix}
            n_{\text{fl}} \\
            n_{\text{fr}} \\
            n_{\text{bl}} \\
            n_{\text{br}} \\
-        \end{bmatrix}  
-    \] 
+        \end{bmatrix}
+    \]
 \end{itemize}
 
 \section{Important Matrices}
@@ -230,14 +230,14 @@ $F$ and $G$ combine to give a prediction of the next state given the current sta
 Our Error-State Kalman filter introduces 2 complications:
 \begin{itemize}
     \item We are actually focusing our tracking efforts on the error state, not the nominal state.
-    \item We are assuming the system is nonlinear. 
+    \item We are assuming the system is nonlinear.
 \end{itemize}
 
 These complications lead to the following definitions:
 \begin{align}
     \widehat{x}_{n+1,n} &= f(\widehat{x}_{n,n}, u) \\
     \widehat{\delta x}_{n+1, n} &= (I + \frac{\partial f_{error}}{\partial \delta x} \Delta t) \widehat{\delta x}_{n,n}
-\end{align} 
+\end{align}
 
 The second line represents the derivative of a seperate $f$ representing the nonlinear dynamics of the error state. Although these nonlinear dynamics can be hand-differentiated, we will use Python's autodiff as it will remain more accurate especially for later parts of the system and maintains flexibility in case we ever go down a learning-based path. Here is the explicit version of our F matrix for reference:
 
@@ -251,7 +251,7 @@ Our F is defined like this:
     &\dots &0& \dots \\
 \end{bmatrix}
 \]
-\subsection{H}
+\subsection{K}
 We formalize the concept of "conditioning our state on our observations" with the concept of Kalman gain, denoted as $K_n$. This quantity represents how much we trust new measurements, and how much we'll factor them into our updated state. Kalman gain for a linear Kalman filter is defined as:
 \[
 K_n = P_{n,n-1}H^T \cdot (H P_{n,n-1}H^T + R_n)^{-1}
@@ -260,7 +260,7 @@ In scalar form, we can more intuitively write it as:
 \[
 K_n = \dfrac{P_{n,n-1}}{P_{n,n-1}+R_n}
 \]
-and we update our state with: 
+and we update our state with:
 \[
 \widehat{x}_{n,n} = \widehat{x}_{n,n-1} + K_n(z_n - H\widehat{x}_{n,n-1})
 \]
@@ -283,15 +283,23 @@ In scalar form, a Kalman gain of $1$ correlates to fully trusting your measureme
 If $P \gg R$, $K \lim\to 1$. This physically means that your uncertainty on your state is extremely high, and so then regardless of how much noise our sensors have we trust the measurement 100\%. This is commonly used near the beginning of the estimation process when we initialize a guess of the system.
 
 If $R \gg P$, $K \lim \to 0$. This correlates with extremely high sensor noise, meaning we take our previous prediction with no weight on the new measurement.
-The more complex form does a similar process with some intermediary steps like projecting the covariance matrix into the measurement space, but the general idea remains the same. 
+The more complex form does a similar process with some intermediary steps like projecting the covariance matrix into the measurement space, but the general idea remains the same.
 
-The H matrix is much more granular than the F matrix, and operates directly on component vectors.
+\subsection{H}
+The H matrix is much more granular than the F matrix, and operates directly on component vectors. This matrix maps the current error state to an expected measurement for each sensor in order to produce the "innovation" term shown above in the Kalman gain.
 
 \subsection{Q and R}
 These matrices represent the noise for different parts of our system.
 \begin{itemize}
     \item Q represents the noise of the measurements (process noise)
-    \item R represents the noise of the sensors 
+    \item R represents the noise of the sensors
 \end{itemize}
-I have not yet decided on the contents of either matrix. The R matrix is a lot easier to derive (we just measure noise), but the Q matrix is pretty tricky to figure out. Right now, I just have it set as a diagonal matrix with just one input affecting the state tying in. For example, position is set to 0 since nothing directly measures it, velocity has an acceleration term, etc. This requires some more work on my part to understand. 
+I have not yet decided on the contents of either matrix. The R matrix is a lot easier to derive (we just measure noise), but the Q matrix is pretty tricky to figure out.
+
+Right now, I just have it set as a diagonal matrix with just one input affecting the state tying in. For example, position is set to 0 since nothing directly measures it, velocity has an acceleration term, etc. This requires some more work on my part to understand.
+
+
+\section{High Level Intuition}
+The key to understanding the Kalman filter lies in the Maximum a posteriori and MMSE estimates from probability. The Kalman filter is just MAP/MMSE with priors of physics and your measurements. Crucially, they are the same since we assume everything is Gaussian or we linearize it to appear that way. On every time step, we try to find the pose that minimizes the difference between our uncertain measurements and our state, with this trust formalized in the Kalman gain and relative to the covariance.
+
 \end{document}
